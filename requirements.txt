@@ -1,0 +1,6 @@
+openai
+elasticsearch
+scikit-learn
+pandas
+tdqm #progess bar
+minsearch
