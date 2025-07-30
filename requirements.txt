@@ -1,6 +1,5 @@
 openai
-elasticsearch
+elasticsearch==8.12.1
 scikit-learn
 pandas
-tdqm #progess bar
 minsearch

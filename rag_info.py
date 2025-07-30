@@ -1,36 +1,20 @@
 import minsearch
 import json
 
-with open('documents.json', 'rt') as f_in:
-    docs_raw = json.load(f_in)
 
-documents = []
+def read_doc():
+    with open('documents.json', 'rt') as f_in:
+        docs_raw = json.load(f_in)
 
-for course_dict in docs_raw:
-    for doc in course_dict['documents']:
-        doc['course'] = course_dict['course']
-        documents.append(doc)
+    documents = []
 
-print(documents[0])
+    for course_dict in docs_raw:
+        for doc in course_dict['documents']:
+            doc['course'] = course_dict['course']
+            documents.append(doc)
 
-index = minsearch.Index(
-    text_fields=["question", "text", "section"],
-    keyword_fields=["course"]
-)
+    return documents
 
-
-q = 'the course has already started, can I still enroll?'
-index.fit(documents)
-
-# from openai import OpenAI
-# # client = OpenAI()
-# client = OpenAI()
-# response = client.chat.completions.create(
-#     model='gpt-4o',
-#     messages=[{"role": "user", "content": q}]
-# )
-
-# print(response.choices[0].message.content)
 
 def build_prompt(query, search_results):
     prompt_template = """
@@ -51,7 +35,11 @@ def build_prompt(query, search_results):
     prompt = prompt_template.format(question=query, context=context).strip()
     return prompt
 
+
+
 def llm(prompt):
+    from openai import OpenAI
+    client = OpenAI()
     response = client.chat.completions.create(
         model='gpt-4o',
         messages=[{"role": "user", "content": prompt}]
@@ -60,29 +48,36 @@ def llm(prompt):
     return response.choices[0].message.content
 
 
-from elasticsearch import Elasticsearch
-es_client = Elasticsearch('http://localhost:9200') 
-index_settings = {
-    "settings": {
-        "number_of_shards": 1,
-        "number_of_replicas": 0
-    },
-    "mappings": {
-        "properties": {
-            "text": {"type": "text"},
-            "section": {"type": "text"},
-            "question": {"type": "text"},
-            "course": {"type": "keyword"} 
-        }
-    }
-}
-
-index_name = "course-questions"
-
-es_client.indices.create(index=index_name, body=index_settings)
 
 
 def elastic_search(query):
+    from elasticsearch import Elasticsearch
+    es_client = Elasticsearch('http://localhost:9200')
+
+    documents = read_doc()
+    # index_settings = {
+    #     "settings": {
+    #         "number_of_shards": 1,
+    #         "number_of_replicas": 0
+    #     },
+    #     "mappings": {
+    #         "properties": {
+    #             "text": {"type": "text"},
+    #             "section": {"type": "text"},
+    #             "question": {"type": "text"},
+    #             "course": {"type": "keyword"} 
+    #         }
+    #     }
+    # }
+
+    index_name = "course-questions"
+
+    # es_client.indices.create(index=index_name, body=index_settings)
+
+    # from tqdm.auto import tqdm
+    for doc in documents:
+        es_client.index(index=index_name, body=doc)
+
     search_query = {
         "size": 5,
         "query": {
@@ -115,7 +110,10 @@ def elastic_search(query):
 def rag(query):
     search_results = elastic_search(query)
     prompt = build_prompt(query, search_results)
-    answer = llm(prompt)
-    return answer
+    print(prompt)
+    # answer = llm(prompt)
+    # return answer
 
+query = "I just saw the course, can I still enroll?"
+query = "How do I get the certificate?"
 rag(query)
