@@ -3,3 +3,4 @@ elasticsearch==8.12.1
 scikit-learn
 pandas
 minsearch
+qdrant-client[fastembed]>=1.14.2
